@@ -30,7 +30,14 @@ extern "C" fn wnd_proc(
 ) -> windows::LResult {
     match message {
         windows::WM_CREATE => {
-            windows::register_rid(wnd).unwrap();
+            windows::register_raw_input_devices(
+                wnd,
+                &[
+                    windows::RawInputType::Mouse,
+                    windows::RawInputType::Keyboard,
+                ],
+            )
+            .unwrap();
         }
         windows::WM_INPUT => {
             let raw_input = match windows::get_raw_input_data(lparam as windows::HRawInput) {
@@ -38,18 +45,21 @@ extern "C" fn wnd_proc(
                 Err(_) => return 0,
             };
 
-            let keyboard = raw_input.keyboard().unwrap();
-            println!(
-                "{:?}, {:?} ('{}' {})",
-                raw_input.header,
-                keyboard,
-                keyboard.key(),
-                if keyboard.message == windows::WM_KEYDOWN {
-                    "down"
-                } else {
-                    "up"
-                },
-            );
+            print!("{:?}, ", raw_input.header);
+            if let Some(keyboard) = raw_input.keyboard() {
+                println!(
+                    "{:?} ('{}' {})",
+                    keyboard,
+                    keyboard.key(),
+                    if keyboard.message == windows::WM_KEYDOWN {
+                        "down"
+                    } else {
+                        "up"
+                    },
+                );
+            } else if let Some(mouse) = raw_input.mouse() {
+                println!("{:?}", mouse,);
+            }
         }
         windows::WM_CLOSE => {
             windows::post_quit_message(0);

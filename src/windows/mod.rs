@@ -97,18 +97,36 @@ pub fn dispatch_message(msg: &Msg) -> LResult {
     (unsafe { DispatchMessageA(msg as *const Msg) }) as isize
 }
 
-pub fn register_rid(hwnd: HWnd) -> Result<()> {
-    let rid = RawInputDevice {
-        usage_page: HID_USAGE_PAGE_GENERIC, // raw keyboard data only
-        usage: HID_USAGE_GENERIC_KEYBOARD,
-        flags: RIDEV_NOLEGACY | RIDEV_INPUTSINK, // no legacy, system-wide
-        hwnd_target: hwnd,
-    };
+#[repr(u16)]
+#[derive(Clone, Copy, Debug)]
+#[allow(dead_code)] // TODO release as lib?
+pub enum RawInputType {
+    Pointer = HID_USAGE_GENERIC_POINTER,
+    Mouse = HID_USAGE_GENERIC_MOUSE,
+    Joystick = HID_USAGE_GENERIC_JOYSTICK,
+    GamePad = HID_USAGE_GENERIC_GAMEPAD,
+    Keyboard = HID_USAGE_GENERIC_KEYBOARD,
+    Keypad = HID_USAGE_GENERIC_KEYPAD,
+    MultiAxisController = HID_USAGE_GENERIC_MULTI_AXIS_CONTROLLER,
+}
+
+pub fn register_raw_input_devices(hwnd: HWnd, types: &[RawInputType]) -> Result<()> {
+    // TODO we never de-register it
+    let mut rid = Vec::with_capacity(types.len());
+
+    for ty in types {
+        rid.push(RawInputDevice {
+            usage_page: HID_USAGE_PAGE_GENERIC, // raw keyboard data only
+            usage: *ty as u16,
+            flags: RIDEV_NOLEGACY | RIDEV_INPUTSINK, // no legacy, system-wide
+            hwnd_target: hwnd,
+        });
+    }
 
     if unsafe {
         RegisterRawInputDevices(
-            &rid as *const RawInputDevice,
-            1,
+            rid.as_ptr(),
+            rid.len() as u32,
             mem::size_of::<RawInputDevice>() as u32,
         )
     } == 0
@@ -127,6 +145,14 @@ impl RawInputValue {
     pub fn keyboard(&self) -> Option<&RawKeyboard> {
         if self.header.ty == RIM_TYPEKEYBOARD {
             Some(unsafe { &self.data.keyboard })
+        } else {
+            None
+        }
+    }
+
+    pub fn mouse(&self) -> Option<&RawMouse> {
+        if self.header.ty == RIM_TYPEMOUSE {
+            Some(unsafe { &self.data.mouse })
         } else {
             None
         }
