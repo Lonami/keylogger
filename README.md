@@ -1,3 +1,7 @@
+Moved to https://codeberg.org/Lonami/keylogger. The GitHub repository may be deleted in the future.
+
+---
+
 # keylogger
 
 A pure-Rust keylogger for Windows, attaching to the raw keyboard events. No dependencies other
